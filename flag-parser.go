@@ -93,7 +93,7 @@ func (fp *FlagParser) CheckInitialisation() error {
 	return nil
 }
 
-// Populate user flag map. Separate method supports
+// Populate user input (flag/arg) maps. Separate method supports
 // use of implicit flags
 func (fp *FlagParser) setupUserMaps(args []string) error {
 	fp.user_intKey, fp.user_strKey = make(map[int]string), make(map[string]int)
@@ -102,10 +102,10 @@ func (fp *FlagParser) setupUserMaps(args []string) error {
 		if len(s) > 1 && strings.HasPrefix(s, "-") {
 			_, inCanonicalList := fp.GetIndexFromFlagValue(system, s)
 			if !inCanonicalList {
-				flgInf, _ := fp.GetFlagInfoFromName(s)
+				// allows for negative number input (for shorthand date parsing)
 				asRunes := []rune(s)
 				_, err := strconv.Atoi(string(asRunes[1])) // 1 after asRunes[0] (which = "-")
-				if err != nil && flgInf.flgType != DateTime {
+				if err != nil {
 					return &UserArgsContainsUnknownFlag{}
 				}
 			}

@@ -202,6 +202,20 @@ func _getDateParsingTestCases() []parsing_test_case {
 		systemFlags:    _getTodoAddTestCases,
 		err:            nil,
 		dateTimeFormat: "",
+	}, {
+		args:           []string{"this", "is", "a spaceful", "body", "-4 d", "-1", "m", "-", "3", "y"},
+		expected:       []string{"-b", "this is a spaceful body -4 d -1 m - 3 y"},
+		name:           "negative time vals no date or body flag",
+		systemFlags:    _getTodoAddTestCases,
+		err:            nil,
+		dateTimeFormat: "",
+	}, {
+		args:           []string{"-b", "valid", "spaceful", "body with invalid date input", "-4 d", "-1", "m", "-", "3", "y"},
+		expected:       []string{"-b", "valid spaceful body with invalid date input -4 d -1 m - 3 y"},
+		name:           "negative time vals no date flag",
+		systemFlags:    _getTodoAddTestCases,
+		err:            nil,
+		dateTimeFormat: "",
 	}}
 }
 
