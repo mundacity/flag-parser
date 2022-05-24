@@ -39,7 +39,7 @@ const (
 type FlagInfo struct {
 	FlagName string
 	FlagType FlagDataType
-	MaxLen   int
+	MaxLen   int // -1 --> standalone flag/switch
 }
 
 type flag_info_key struct {
@@ -202,6 +202,13 @@ func (fp *FlagParser) parse() ([]string, error) {
 
 	ret = fp.handleNumericalInput(ret, ufLocations)
 
+	var removed bool
+	var standalones map[int]string
+	if removed, ret, standalones = fp.removeStandaloneFlags(ret, ufLocations); removed {
+		latest = fp._updateUserMaps(ret)
+		ufLocations = fp.GetFlagLocations(latest)
+	}
+
 	ret, insuff := fp.handleInsufficientFlags(ret, ufLocations)
 	if insuff {
 		latest = fp._updateUserMaps(ret)
@@ -216,7 +223,28 @@ func (fp *FlagParser) parse() ([]string, error) {
 	if err != nil {
 		return ret, err
 	}
+
+	if removed {
+		ret = fp.reassemble(ret, standalones)
+	}
+
 	return ret, nil
+}
+
+func (fp *FlagParser) reassemble(input []string, standalones map[int]string) []string {
+	var ret []string
+	c := len(standalones)
+	if c > 0 {
+		ret = make([]string, len(input)+c)
+		for i, v := range input {
+			ret[i+c] = v
+		}
+
+		for i, v := range standalones {
+			ret[i] = v
+		}
+	}
+	return ret
 }
 
 // Handles spaces in user-passed arguments relative to flags. Moves
@@ -248,10 +276,20 @@ func (fp *FlagParser) handleSpaces() []string {
 
 		if i+1 < len(flagLocations) { // more than one flag left
 			end := flagLocations[i+1]
-			ret = append(ret, usrArgs[flgLoc], StringFromSlice(usrArgs[start:end]))
+			arg := StringFromSlice(usrArgs[start:end])
+			if len(arg) > 0 {
+				ret = append(ret, usrArgs[flgLoc], arg)
+			} else {
+				ret = append(ret, usrArgs[flgLoc]) // standalone flags
+			}
 		}
 		if i+1 == len(flagLocations) { // one more flag
-			ret = append(ret, usrArgs[flgLoc], StringFromSlice(usrArgs[start:]))
+			arg := StringFromSlice(usrArgs[start:])
+			if len(arg) > 0 {
+				ret = append(ret, usrArgs[flgLoc], arg)
+			} else {
+				ret = append(ret, usrArgs[flgLoc]) // standalone flags
+			}
 		}
 	}
 	if len(suffix) > 0 {
@@ -265,13 +303,13 @@ func (fp *FlagParser) handleSpaces() []string {
 func (fp *FlagParser) handleNumericalInput(input []string, locs []int) []string {
 	for _, v := range locs {
 
-		hasNums, nums := fp.argHasNumericalPrefix(input[v+1])
-		if !hasNums {
+		fi, _ := fp.GetFlagInfoFromName(input[v])
+		if fi.flgType != Integer {
 			continue
 		}
 
-		fi, _ := fp.GetFlagInfoFromName(input[v])
-		if fi.flgType != Integer {
+		hasNums, nums := fp.argHasNumericalPrefix(input[v+1])
+		if !hasNums {
 			continue
 		}
 
@@ -305,6 +343,31 @@ func (fp *FlagParser) argHasNumericalPrefix(input string) (bool, string) {
 	return false, ""
 }
 
+func (fp *FlagParser) removeStandaloneFlags(input []string, locs []int) (removed bool, output []string, standaloneLocs map[int]string) {
+	standaloneLocs = make(map[int]string)
+
+	for _, v := range locs {
+		fi, ok := fp.GetFlagInfoFromName(input[v])
+		if ok {
+			if fi.flgType == Boolean && fi.maxLen == -1 {
+				standaloneLocs[v] = input[v]
+			}
+		}
+	}
+
+	for i, v := range input {
+		if _, ok := standaloneLocs[i]; !ok {
+			output = append(output, v)
+		}
+	}
+
+	if len(standaloneLocs) > 0 {
+		removed = true
+	}
+
+	return removed, output, standaloneLocs
+}
+
 // Compares flag & arg count. If insufficient flags, adds implicit flag, else returns input.
 func (fp *FlagParser) handleInsufficientFlags(input []string, locs []int) ([]string, bool) {
 	var ret []string
@@ -324,8 +387,8 @@ func (fp *FlagParser) handleInsufficientFlags(input []string, locs []int) ([]str
 		if i%2 != 0 { // only check flags in even positions (as well as pos 0)
 			continue
 		}
-		_, exists := fp.GetFlagInfoFromName(v)
-		if exists {
+		fi, exists := fp.GetFlagInfoFromName(v)
+		if exists && (fi.maxLen != -1) {
 			continue // valid flag
 		}
 
@@ -365,6 +428,8 @@ func (fp *FlagParser) handleArgumentLengthAndRemainders(input []string, ufLocati
 		if len(remainder) == 0 {
 			if len(arg) > 0 {
 				lenChecked = append(lenChecked, input[v], arg)
+			} else if len(arg) == 0 {
+				lenChecked = append(lenChecked, input[v]) // flags with no arg
 			}
 		} else {
 			lenChecked = append(lenChecked, input[v], arg)
@@ -387,6 +452,10 @@ func (fp *FlagParser) handleArgumentLengthAndRemainders(input []string, ufLocati
 func (fp *FlagParser) checkAgainstMaxLength(input []string, flagLocation int) (arg, remainder string) {
 
 	fi, _ := fp.GetFlagInfoFromName(input[flagLocation])
+
+	if fi.flgType == Boolean && fi.maxLen == -1 {
+		return "", "" // standalone flags
+	}
 
 	argRunes := []rune(input[flagLocation+1])
 

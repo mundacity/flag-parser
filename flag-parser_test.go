@@ -272,6 +272,28 @@ func _getTestCasesForGoDooGetting() []parsing_test_case {
 	}}
 }
 
+func _getTestCasesForGoDooEditing() []parsing_test_case {
+	return []parsing_test_case{{
+		args:        []string{"-i", "38", "--append", "-B", "adding", "to", "body", "with", "edit command"},
+		expected:    []string{"-i", "38", "--append", "-B", "adding to body with edit command"},
+		name:        "spaceful body edit by id",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"--append", "-b", "body", "key", "phrase", "-B", "adding", "to", "body", "with", "edit command"},
+		expected:    []string{"--append", "-b", "body key phrase", "-B", "adding to body with edit command"},
+		name:        "spaceful body search & edit",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"--append", "body", "key", "phrase", "-B", "adding", "to", "body", "with", "edit command"},
+		expected:    []string{"--append", "-b", "body key phrase", "-B", "adding to body with edit command"},
+		name:        "spaceful body search & edit but no body search tag",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}}
+}
+
 func TestVariableTagLengthsWithMultipleTags(t *testing.T) {
 	os.Setenv("MAX_LENGTH", "2000")
 	os.Setenv("MAX_TAG_LENGTH", "2000")
@@ -306,6 +328,20 @@ func TestParseGoDooGetting(t *testing.T) {
 	os.Setenv("DATETIME_FORMAT", "2006-01-02")
 
 	tcs := _getTestCasesForGoDooGetting()
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			_runParseTest(t, tc)
+		})
+	}
+}
+
+func TestParseGoDooEditing(t *testing.T) {
+	os.Setenv("MAX_LENGTH", "2000")
+	os.Setenv("MAX_INT_DIGITS", "4")
+	os.Setenv("DATETIME_FORMAT", "2006-01-02")
+	os.Setenv("TAG_DELIMITER", "*")
+
+	tcs := _getTestCasesForGoDooEditing()
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			_runParseTest(t, tc)
@@ -388,6 +424,32 @@ func _getCanonicalFlagsForGodoGettingTests() []FlagInfo {
 
 	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10)
 
+	return ret
+}
+
+func _getCanonicalFlagsForGodooEditing() []FlagInfo {
+	var ret []FlagInfo
+
+	lenMax := 2000
+	maxIntDigits := 4
+
+	f1 := FlagInfo{FlagName: "-b", FlagType: Str, MaxLen: lenMax}
+	f2 := FlagInfo{FlagName: "-i", FlagType: Integer, MaxLen: maxIntDigits}
+	f3 := FlagInfo{FlagName: "-d", FlagType: DateTime, MaxLen: 20}
+	f4 := FlagInfo{FlagName: "-t", FlagType: Str, MaxLen: lenMax}
+	f5 := FlagInfo{FlagName: "-c", FlagType: Integer, MaxLen: maxIntDigits}
+	f6 := FlagInfo{FlagName: "-e", FlagType: DateTime, MaxLen: 20}
+
+	f7 := FlagInfo{FlagName: "--append", FlagType: Boolean, MaxLen: -1}
+	f8 := FlagInfo{FlagName: "--replace", FlagType: Boolean, MaxLen: -1}
+
+	f9 := FlagInfo{FlagName: "-B", FlagType: Str, MaxLen: lenMax}
+	f10 := FlagInfo{FlagName: "-T", FlagType: Str, MaxLen: lenMax}
+	f11 := FlagInfo{FlagName: "-C", FlagType: Integer, MaxLen: maxIntDigits}
+	f12 := FlagInfo{FlagName: "-D", FlagType: Str, MaxLen: 20}
+	f13 := FlagInfo{FlagName: "-F", FlagType: Boolean, MaxLen: -1}
+
+	ret = append(ret, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13)
 	return ret
 }
 
