@@ -236,12 +236,22 @@ func (fp *FlagParser) reassemble(input []string, standalones map[int]string) []s
 	c := len(standalones)
 	if c > 0 {
 		ret = make([]string, len(input)+c)
-		for i, v := range input {
-			ret[i+c] = v
-		}
 
-		for i, v := range standalones {
-			ret[i] = v
+		for sLocn, sVal := range standalones {
+			offset := 0
+
+			for inpLocn, inpVal := range input {
+
+				if sLocn > inpLocn {
+					ret[inpLocn] = inpVal
+				} else if sLocn == inpLocn {
+					ret[sLocn] = sVal
+					ret[sLocn+1] = inpVal
+					offset++
+				} else if sLocn < inpLocn {
+					ret[inpLocn+offset] = inpVal
+				}
+			}
 		}
 	}
 	return ret
