@@ -272,23 +272,61 @@ func _getTestCasesForGoDooGetting() []parsing_test_case {
 	}}
 }
 
+// probably overkill - stems from fact I tried to reassemble in original order but couldn't make it work
+// some history in a few commits if I need it
 func _getTestCasesForGoDooEditing() []parsing_test_case {
 	return []parsing_test_case{{
 		args:        []string{"-i", "38", "--append", "-B", "adding", "to", "body", "with", "edit command"},
-		expected:    []string{"-i", "38", "--append", "-B", "adding to body with edit command"},
+		expected:    []string{"-i", "38", "-B", "adding to body with edit command", "--append"},
 		name:        "spaceful body edit by id",
 		systemFlags: _getCanonicalFlagsForGodooEditing,
 		err:         nil,
 	}, {
 		args:        []string{"--append", "-b", "body", "key", "phrase", "-B", "adding", "to", "body", "with", "edit command"},
-		expected:    []string{"--append", "-b", "body key phrase", "-B", "adding to body with edit command"},
+		expected:    []string{"-b", "body key phrase", "-B", "adding to body with edit command", "--append"},
 		name:        "spaceful body search & edit",
 		systemFlags: _getCanonicalFlagsForGodooEditing,
 		err:         nil,
 	}, {
 		args:        []string{"--append", "body", "key", "phrase", "-B", "adding", "to", "body", "with", "edit command"},
-		expected:    []string{"--append", "-b", "body key phrase", "-B", "adding to body with edit command"},
+		expected:    []string{"-b", "body key phrase", "-B", "adding to body with edit command", "--append"},
 		name:        "spaceful body search & edit but no body search tag",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"-t", "workNotes", "-B", "work", "note", "edited", "by", "tag", "and", "parent id", "--append", "-c", "43", "-C", "88"},
+		expected:    []string{"-t", "workNotes", "-B", "work note edited by tag and parent id", "-c", "43", "-C", "88", "--append"},
+		name:        "long but fairly simple",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"-B", "work", "note", "edited", "by", "tag", "and", "parent id", "--append", "body", "key", "search", "phrase", "-c", "43", "-C", "88"},
+		expected:    []string{"-B", "work note edited by tag and parent id", "-b", "body key search phrase", "-c", "43", "-C", "88", "--append"},
+		name:        "long but fairly simple - missing body tag",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"-B", "work", "note", "edited", "by", "tag", "and", "parent id", "--append", "body", "key", "search", "phrase", "--replace", "-c", "43", "-C", "88"},
+		expected:    []string{"-B", "work note edited by tag and parent id", "-b", "body key search phrase", "-c", "43", "-C", "88", "--append", "--replace"},
+		name:        "2 standalone flags plus missing body tag",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"-B", "work", "note", "edited", "by", "tag", "and", "parent id", "--append", "body", "key", "search", "phrase", "--replace", "-c", "43", "--nonsensea", "-C", "88"},
+		expected:    []string{"-B", "work note edited by tag and parent id", "-b", "body key search phrase", "-c", "43", "-C", "88", "--append", "--replace", "--nonsensea"},
+		name:        "3 standalone flags plus missing body tag",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"--nonsenseb", "-B", "work", "note", "edited", "by", "tag", "and", "parent id", "--append", "body", "key", "search", "phrase", "--replace", "-c", "43", "--nonsensea", "-C", "88"},
+		expected:    []string{"-B", "work note edited by tag and parent id", "-b", "body key search phrase", "-c", "43", "-C", "88", "--nonsenseb", "--append", "--replace", "--nonsensea"},
+		name:        "4 standalone flags plus missing body tag",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         nil,
+	}, {
+		args:        []string{"--nonsenseb", "--append", "-b", "body", "key", "search", "phrase", "--replace", "-c", "43", "--nonsensea", "-C", "88"},
+		expected:    []string{"-b", "body key search phrase", "-c", "43", "-C", "88", "--nonsenseb", "--append", "--replace", "--nonsensea"},
+		name:        "4 standalone flags plus missing body tag",
 		systemFlags: _getCanonicalFlagsForGodooEditing,
 		err:         nil,
 	}}
@@ -420,7 +458,7 @@ func _getCanonicalFlagsForGodoGettingTests() []FlagInfo {
 	f6 := FlagInfo{FlagName: "-c", FlagType: Integer, MaxLen: maxIntDigits}
 	f7 := FlagInfo{FlagName: "-p", FlagType: Integer, MaxLen: maxIntDigits}
 	f9 := FlagInfo{FlagName: "-e", FlagType: DateTime, MaxLen: 20}
-	f10 := FlagInfo{FlagName: "-a", FlagType: Boolean, MaxLen: 1}
+	f10 := FlagInfo{FlagName: "-a", FlagType: Boolean, Standalone: true}
 
 	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10)
 
@@ -440,8 +478,8 @@ func _getCanonicalFlagsForGodooEditing() []FlagInfo {
 	f5 := FlagInfo{FlagName: "-c", FlagType: Integer, MaxLen: maxIntDigits}
 	f6 := FlagInfo{FlagName: "-e", FlagType: DateTime, MaxLen: 20}
 
-	f7 := FlagInfo{FlagName: "--append", FlagType: Boolean, MaxLen: -1}
-	f8 := FlagInfo{FlagName: "--replace", FlagType: Boolean, MaxLen: -1}
+	f7 := FlagInfo{FlagName: "--append", FlagType: Boolean, Standalone: true}
+	f8 := FlagInfo{FlagName: "--replace", FlagType: Boolean, Standalone: true}
 
 	f9 := FlagInfo{FlagName: "-B", FlagType: Str, MaxLen: lenMax}
 	f10 := FlagInfo{FlagName: "-T", FlagType: Str, MaxLen: lenMax}
@@ -449,7 +487,10 @@ func _getCanonicalFlagsForGodooEditing() []FlagInfo {
 	f12 := FlagInfo{FlagName: "-D", FlagType: Str, MaxLen: 20}
 	f13 := FlagInfo{FlagName: "-F", FlagType: Boolean, MaxLen: -1}
 
-	ret = append(ret, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13)
+	f14 := FlagInfo{FlagName: "--nonsensea", FlagType: Boolean, Standalone: true}
+	f15 := FlagInfo{FlagName: "--nonsenseb", FlagType: Boolean, Standalone: true}
+
+	ret = append(ret, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15)
 	return ret
 }
 

@@ -2,6 +2,7 @@ package flagParser
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -37,15 +38,17 @@ const (
 )
 
 type FlagInfo struct {
-	FlagName string
-	FlagType FlagDataType
-	MaxLen   int // -1 --> standalone flag/switch
+	FlagName   string
+	FlagType   FlagDataType
+	MaxLen     int
+	Standalone bool
 }
 
 type flag_info_key struct {
-	index   int
-	flgType FlagDataType
-	maxLen  int
+	index      int
+	flgType    FlagDataType
+	maxLen     int
+	standalone bool
 }
 
 type NowMomentFunc func(*FlagParser)
@@ -73,7 +76,7 @@ func NewFlagParser(allFlags []FlagInfo, userFlags []string, nowFunc NowMomentFun
 
 	for i, fi := range allFlags {
 		fp.system_intKey[i] = fi
-		fik := flag_info_key{index: i, flgType: fi.FlagType, maxLen: fi.MaxLen}
+		fik := flag_info_key{index: i, flgType: fi.FlagType, maxLen: fi.MaxLen, standalone: fi.Standalone}
 		fp.system_strKey[fi.FlagName] = fik
 	}
 
@@ -231,32 +234,6 @@ func (fp *FlagParser) parse() ([]string, error) {
 	return ret, nil
 }
 
-func (fp *FlagParser) reassemble(input []string, standalones map[int]string) []string {
-	var ret []string
-	c := len(standalones)
-	if c > 0 {
-		ret = make([]string, len(input)+c)
-
-		for sLocn, sVal := range standalones {
-			offset := 0
-
-			for inpLocn, inpVal := range input {
-
-				if sLocn > inpLocn {
-					ret[inpLocn] = inpVal
-				} else if sLocn == inpLocn {
-					ret[sLocn] = sVal
-					ret[sLocn+1] = inpVal
-					offset++
-				} else if sLocn < inpLocn {
-					ret[inpLocn+offset] = inpVal
-				}
-			}
-		}
-	}
-	return ret
-}
-
 // Handles spaces in user-passed arguments relative to flags. Moves
 // flag-less arguments to the end of the input.
 //
@@ -353,13 +330,15 @@ func (fp *FlagParser) argHasNumericalPrefix(input string) (bool, string) {
 	return false, ""
 }
 
+// Removes standalone flags from input. Makes it easier to
+// determine if implicit flags are missing
 func (fp *FlagParser) removeStandaloneFlags(input []string, locs []int) (removed bool, output []string, standaloneLocs map[int]string) {
 	standaloneLocs = make(map[int]string)
 
 	for _, v := range locs {
 		fi, ok := fp.GetFlagInfoFromName(input[v])
 		if ok {
-			if fi.flgType == Boolean && fi.maxLen == -1 {
+			if fi.standalone {
 				standaloneLocs[v] = input[v]
 			}
 		}
@@ -398,7 +377,7 @@ func (fp *FlagParser) handleInsufficientFlags(input []string, locs []int) ([]str
 			continue
 		}
 		fi, exists := fp.GetFlagInfoFromName(v)
-		if exists && (fi.maxLen != -1) {
+		if exists && (!fi.standalone) {
 			continue // valid flag
 		}
 
@@ -463,8 +442,8 @@ func (fp *FlagParser) checkAgainstMaxLength(input []string, flagLocation int) (a
 
 	fi, _ := fp.GetFlagInfoFromName(input[flagLocation])
 
-	if fi.flgType == Boolean && fi.maxLen == -1 {
-		return "", "" // standalone flags
+	if fi.standalone {
+		return "", ""
 	}
 
 	argRunes := []rune(input[flagLocation+1])
@@ -589,6 +568,24 @@ func getEmptyDateMap() map[string]int {
 	mp[d] = 0
 
 	return mp
+}
+
+// Appends standalone flags to end of input. Since they're
+// standalone, placement isn't significant but sequential order is maintained.
+func (fp *FlagParser) reassemble(input []string, standalones map[int]string) []string {
+	var locs []int
+
+	// can't guarantee order in maps
+	// no real difference; just for predictability/testing
+	for i := range standalones {
+		locs = append(locs, i)
+	}
+	sort.Ints(locs)
+
+	for _, v := range locs {
+		input = append(input, standalones[v])
+	}
+	return input
 }
 
 func (fp *FlagParser) _updateUserMaps(addition []string) int {
