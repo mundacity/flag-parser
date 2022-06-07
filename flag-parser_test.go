@@ -332,6 +332,45 @@ func _getTestCasesForGoDooEditing() []parsing_test_case {
 	}}
 }
 
+func getBadInputTesting() []parsing_test_case {
+	return []parsing_test_case{{
+		args:        []string{"-F", "-d"},
+		expected:    []string{},
+		name:        "missing arg",
+		systemFlags: _getCanonicalFlagsForGodooEditing,
+		err:         &MissingArgumentError{},
+	}, {
+		args:        []string{"-a", "-d", "0d", "-t"},
+		expected:    []string{""},
+		name:        "missing arg2",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &MissingArgumentError{},
+	}, {
+		args:        []string{"-a", "-f"},
+		expected:    []string{"-a", "-f"},
+		name:        "standalones only",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         nil,
+	}, {
+		args:        []string{"-3", "garbage", "-u", "input"},
+		expected:    []string{},
+		name:        "garbage input",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &UserArgsContainsUnknownFlag{},
+	}, {
+		args:        []string{"-t", "1d2m3y"},
+		expected:    []string{"-t", "1d2m3y"},
+		name:        "wrong arg data type",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         nil,
+	}, {
+		args:        []string{"-t", "33", "-u", "input"},
+		expected:    []string{},
+		name:        "wrong input data type and garbage flag/arg",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &UserArgsContainsUnknownFlag{},
+	}}
+}
 func TestVariableTagLengthsWithMultipleTags(t *testing.T) {
 	os.Setenv("MAX_LENGTH", "2000")
 	os.Setenv("MAX_TAG_LENGTH", "2000")
@@ -393,8 +432,10 @@ func _runParseTest(t *testing.T, tc parsing_test_case) {
 	got, err := fp.ParseUserInput()
 
 	if err != nil && err == tc.err {
-		t.Logf(">>>>PASSED: operation threw error. \nExp\t'%v', \nGot\t'%v'", tc.err, err)
+		t.Logf(">>>>PASSED: operation threw correct error. \nExp\t'%v', \nGot\t'%v'", tc.err, err)
 		return
+	} else if err != nil && err != tc.err {
+		t.Errorf(">>>>FAILED: operation threw incorrect error. \nExp\t'%v', \nGot\t'%v'", tc.err, err)
 	}
 
 	if len(tc.expected) != len(got) {
@@ -459,8 +500,9 @@ func _getCanonicalFlagsForGodoGettingTests() []FlagInfo {
 	f7 := FlagInfo{FlagName: "-p", FlagType: Integer, MaxLen: maxIntDigits}
 	f9 := FlagInfo{FlagName: "-e", FlagType: DateTime, MaxLen: 20}
 	f10 := FlagInfo{FlagName: "-a", FlagType: Boolean, Standalone: true}
+	f11 := FlagInfo{FlagName: "-f", FlagType: Boolean, Standalone: true}
 
-	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10)
+	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10, f11)
 
 	return ret
 }
@@ -485,7 +527,7 @@ func _getCanonicalFlagsForGodooEditing() []FlagInfo {
 	f10 := FlagInfo{FlagName: "-T", FlagType: Str, MaxLen: lenMax}
 	f11 := FlagInfo{FlagName: "-C", FlagType: Integer, MaxLen: maxIntDigits}
 	f12 := FlagInfo{FlagName: "-D", FlagType: Str, MaxLen: 20}
-	f13 := FlagInfo{FlagName: "-F", FlagType: Boolean, MaxLen: -1}
+	f13 := FlagInfo{FlagName: "-F", FlagType: Boolean, Standalone: true}
 
 	f14 := FlagInfo{FlagName: "--nonsensea", FlagType: Boolean, Standalone: true}
 	f15 := FlagInfo{FlagName: "--nonsenseb", FlagType: Boolean, Standalone: true}
@@ -532,4 +574,18 @@ func _runDateParseTest(t *testing.T, tc parsing_test_case) {
 func returnNowString() string {
 	n := time.Date(2022, 03, 14, 0, 0, 0, 0, time.UTC)
 	return StringFromDate(n)
+}
+
+func TestBadInput(t *testing.T) {
+	os.Setenv("MAX_LENGTH", "2000")
+	os.Setenv("MAX_TAG_LENGTH", "10")
+	os.Setenv("MAX_INT_DIGITS", "4")
+	os.Setenv("DATETIME_FORMAT", "2006-01-02")
+
+	tcs := getBadInputTesting()
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			_runParseTest(t, tc)
+		})
+	}
 }

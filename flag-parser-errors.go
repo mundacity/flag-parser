@@ -23,3 +23,9 @@ type FlagMapperInitialisationError struct{}
 func (f *FlagMapperInitialisationError) Error() string {
 	return "flag mapper initialisation failed"
 }
+
+type MissingArgumentError struct{}
+
+func (m *MissingArgumentError) Error() string {
+	return "flag missing argument"
+}

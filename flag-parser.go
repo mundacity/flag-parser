@@ -212,13 +212,17 @@ func (fp *FlagParser) parse() ([]string, error) {
 		ufLocations = fp.GetFlagLocations(latest)
 	}
 
+	err := checkForMissingArgs(ret, ufLocations)
+	if err != nil {
+		return ret, err
+	}
 	ret, insuff := fp.handleInsufficientFlags(ret, ufLocations)
 	if insuff {
 		latest = fp._updateUserMaps(ret)
 		ufLocations = fp.GetFlagLocations(latest)
 	}
 
-	ret, err := fp.handleArgumentLengthAndRemainders(ret, ufLocations)
+	ret, err = fp.handleArgumentLengthAndRemainders(ret, ufLocations)
 	if err != nil {
 		return ret, err
 	}
@@ -357,6 +361,16 @@ func (fp *FlagParser) removeStandaloneFlags(input []string, locs []int) (removed
 	return removed, output, standaloneLocs
 }
 
+func checkForMissingArgs(input []string, locs []int) error {
+	flgCount := len(locs)
+	argCount := len(input) - flgCount
+
+	if argCount < flgCount { // standalones removed --> bad input
+		return &MissingArgumentError{}
+	}
+	return nil
+}
+
 // Compares flag & arg count. If insufficient flags, adds implicit flag, else returns input.
 func (fp *FlagParser) handleInsufficientFlags(input []string, locs []int) ([]string, bool) {
 	var ret []string
@@ -364,7 +378,7 @@ func (fp *FlagParser) handleInsufficientFlags(input []string, locs []int) ([]str
 	flgCount := len(locs)
 	argCount := len(input) - flgCount
 
-	if argCount <= flgCount { // optimal
+	if argCount == flgCount { // optimal (with standalones removed)
 		return input, false
 	}
 
