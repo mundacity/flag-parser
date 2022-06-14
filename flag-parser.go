@@ -60,11 +60,6 @@ func WithNowAs(nowStr, dateTimeFormat string) NowMomentFunc {
 	}
 }
 
-func NewFlagInfo(name string, flgType FlagDataType, maxLen int, dropExcess bool) *FlagInfo {
-	fi := &FlagInfo{FlagName: name, FlagType: flgType, MaxLen: maxLen}
-	return fi
-}
-
 // Sets up a new FlagParser. allFlags[0] assumed to be implicit flag
 func NewFlagParser(allFlags []FlagInfo, userFlags []string, nowFunc NowMomentFunc) *FlagParser {
 	fp := FlagParser{canonicalFlags: allFlags}
