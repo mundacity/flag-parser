@@ -170,6 +170,12 @@ func (fp *FlagParser) GetFlagLocations(iteration int) []int {
 	return ret
 }
 
+// Get location of canonical flags in latest iteration of user-passed flags
+func (fp *FlagParser) GetLatestFlagLocations() []int {
+	i := len(fp.userPassedFlags) - 1
+	return fp.GetFlagLocations(i)
+}
+
 // Compares user-provided flag input with canonical list.
 // Can handle both use & non-use of quotation marks.
 //
@@ -187,7 +193,7 @@ func (fp *FlagParser) ParseUserInput() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	fp._updateUserMaps(newArgs)
+	fp.updateUserMaps(newArgs)
 
 	return newArgs, nil
 }
@@ -195,16 +201,16 @@ func (fp *FlagParser) ParseUserInput() ([]string, error) {
 func (fp *FlagParser) parse() ([]string, error) {
 	ret := fp.handleSpaces()
 
-	latest := fp._updateUserMaps(ret)
-	ufLocations := fp.GetFlagLocations(latest)
+	fp.updateUserMaps(ret)
+	ufLocations := fp.GetLatestFlagLocations()
 
 	ret = fp.handleNumericalInput(ret, ufLocations)
 
 	var removed bool
 	var standalones map[int]string
 	if removed, ret, standalones = fp.removeStandaloneFlags(ret, ufLocations); removed {
-		latest = fp._updateUserMaps(ret)
-		ufLocations = fp.GetFlagLocations(latest)
+		fp.updateUserMaps(ret)
+		ufLocations = fp.GetLatestFlagLocations()
 	}
 
 	err := checkForMissingArgs(ret, ufLocations)
@@ -213,8 +219,8 @@ func (fp *FlagParser) parse() ([]string, error) {
 	}
 	ret, insuff := fp.handleInsufficientFlags(ret, ufLocations)
 	if insuff {
-		latest = fp._updateUserMaps(ret)
-		ufLocations = fp.GetFlagLocations(latest)
+		fp.updateUserMaps(ret)
+		ufLocations = fp.GetLatestFlagLocations()
 	}
 
 	ret, err = fp.handleArgumentLengthAndRemainders(ret, ufLocations)
@@ -241,11 +247,11 @@ func (fp *FlagParser) parse() ([]string, error) {
 // If between positon zero and a canonical flag, its assumed to be the
 // arg for an implicit flag.
 func (fp *FlagParser) handleSpaces() []string {
-	var ret, suffix []string
-	latest := len(fp.userPassedFlags) - 1
-	usrArgs := fp.userPassedFlags[latest] //latest version; first time = actual user input
 
-	flagLocations := fp.GetFlagLocations(latest)
+	var ret, suffix []string
+	usrArgs := fp.userPassedFlags[len(fp.userPassedFlags)-1] //latest version; first time = actual user input
+
+	flagLocations := fp.GetLatestFlagLocations()
 	if len(flagLocations) == 0 {
 		ret = append(ret, StringFromSlice(usrArgs)) //no flags, return input
 		return ret
@@ -398,8 +404,8 @@ func (fp *FlagParser) handleInsufficientFlags(input []string, locs []int) ([]str
 		ret = append(ret, fp.implicitFlag)
 		ret = append(ret, input[i:]...)
 
-		latest := fp._updateUserMaps(ret)
-		locs2 := fp.GetFlagLocations(latest)
+		fp.updateUserMaps(ret)
+		locs2 := fp.GetLatestFlagLocations()
 
 		_, insuff := fp.handleInsufficientFlags(ret, locs2)
 		recurs = true
@@ -597,10 +603,9 @@ func (fp *FlagParser) reassemble(input []string, standalones map[int]string) []s
 	return input
 }
 
-func (fp *FlagParser) _updateUserMaps(addition []string) int {
+func (fp *FlagParser) updateUserMaps(addition []string) {
 	fp.userPassedFlags = append(fp.userPassedFlags, addition)
 	fp.setupUserMaps(addition)
-	return len(fp.userPassedFlags) - 1
 }
 
 func StringFromSlice(sl []string) string {
