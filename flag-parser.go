@@ -77,7 +77,7 @@ func NewFlagParser(allFlags []FlagInfo, userFlags []string, nowFunc NowMomentFun
 
 	err := fp.setupUserMaps(userFlags)
 	if err != nil {
-		fp.HasUnknownFlags = true // don't return error from constructor
+		fp.HasUnknownFlags = true //don't return error from constructor
 	}
 
 	nowFunc(&fp)
@@ -100,9 +100,9 @@ func (fp *FlagParser) setupUserMaps(args []string) error {
 		if len(s) > 1 && strings.HasPrefix(s, "-") {
 			_, inCanonicalList := fp.GetIndexFromFlagValue(system, s)
 			if !inCanonicalList {
-				// allows for negative number input (for shorthand date parsing)
+				//allows for negative number input (for shorthand date parsing)
 				asRunes := []rune(s)
-				_, err := strconv.Atoi(string(asRunes[1])) // 1 after asRunes[0] (which = "-")
+				_, err := strconv.Atoi(string(asRunes[1])) //1 after asRunes[0] (which = "-")
 				if err != nil {
 					return &UserArgsContainsUnknownFlag{}
 				}
@@ -161,7 +161,7 @@ func (fp *FlagParser) GetFlagLocations(iteration int) []int {
 	ret := []int{}
 
 	for i, s := range fp.userPassedFlags[iteration] {
-		_, exists := fp.GetIndexFromFlagValue(system, s) // prevents use of non-canonical flags
+		_, exists := fp.GetIndexFromFlagValue(system, s) //prevents use of non-canonical flags
 		if exists {
 			ret = append(ret, i)
 		}
@@ -243,38 +243,38 @@ func (fp *FlagParser) parse() ([]string, error) {
 func (fp *FlagParser) handleSpaces() []string {
 	var ret, suffix []string
 	latest := len(fp.userPassedFlags) - 1
-	usrArgs := fp.userPassedFlags[latest] // latest version; first time = actual user input
+	usrArgs := fp.userPassedFlags[latest] //latest version; first time = actual user input
 
 	flagLocations := fp.GetFlagLocations(latest)
 	if len(flagLocations) == 0 {
-		ret = append(ret, StringFromSlice(usrArgs)) // no flags, return input
+		ret = append(ret, StringFromSlice(usrArgs)) //no flags, return input
 		return ret
 	}
 
 	for i, flgLoc := range flagLocations {
 
 		if i == 0 && flgLoc != 0 {
-			// most likely an arg with an implicit flag
+			//most likely an arg with an implicit flag
 			suffix = append(suffix, StringFromSlice(usrArgs[i:flgLoc]))
 		}
 
 		start := flgLoc + 1
 
-		if i+1 < len(flagLocations) { // more than one flag left
+		if i+1 < len(flagLocations) { //more than one flag left
 			end := flagLocations[i+1]
 			arg := StringFromSlice(usrArgs[start:end])
 			if len(arg) > 0 {
 				ret = append(ret, usrArgs[flgLoc], arg)
 			} else {
-				ret = append(ret, usrArgs[flgLoc]) // standalone flags
+				ret = append(ret, usrArgs[flgLoc]) //standalone flags
 			}
 		}
-		if i+1 == len(flagLocations) { // one more flag
+		if i+1 == len(flagLocations) { //one more flag
 			arg := StringFromSlice(usrArgs[start:])
 			if len(arg) > 0 {
 				ret = append(ret, usrArgs[flgLoc], arg)
 			} else {
-				ret = append(ret, usrArgs[flgLoc]) // standalone flags
+				ret = append(ret, usrArgs[flgLoc]) //standalone flags
 			}
 		}
 	}
@@ -360,7 +360,7 @@ func checkForMissingArgs(input []string, locs []int) error {
 	flgCount := len(locs)
 	argCount := len(input) - flgCount
 
-	if argCount < flgCount { // standalones removed --> bad input
+	if argCount < flgCount { //standalones removed --> bad input
 		return &MissingArgumentError{}
 	}
 	return nil
@@ -373,24 +373,24 @@ func (fp *FlagParser) handleInsufficientFlags(input []string, locs []int) ([]str
 	flgCount := len(locs)
 	argCount := len(input) - flgCount
 
-	if argCount == flgCount { // optimal (with standalones removed)
+	if argCount == flgCount { //optimal (with standalones removed)
 		return input, false
 	}
 
 	for i, v := range input {
 
-		if recurs { // recursive call only needed once
+		if recurs { //recursive call only needed once
 			break
 		}
-		if i%2 != 0 { // only check flags in even positions (as well as pos 0)
+		if i%2 != 0 { //only check flags in even positions (as well as pos 0)
 			continue
 		}
 		fi, exists := fp.GetFlagInfoFromName(v)
 		if exists && (!fi.standalone) {
-			continue // valid flag
+			continue //valid flag
 		}
 
-		// else add implicit flag
+		//else add implicit flag
 		prior := make([]string, len(input[0:i]))
 		copy(prior, input[0:i])
 
@@ -427,7 +427,7 @@ func (fp *FlagParser) handleArgumentLengthAndRemainders(input []string, ufLocati
 			if len(arg) > 0 {
 				lenChecked = append(lenChecked, input[v], arg)
 			} else if len(arg) == 0 {
-				lenChecked = append(lenChecked, input[v]) // flags with no arg
+				lenChecked = append(lenChecked, input[v]) //flags with no arg
 			}
 		} else {
 			lenChecked = append(lenChecked, input[v], arg)
@@ -470,7 +470,7 @@ func (fp *FlagParser) checkAgainstMaxLength(input []string, flagLocation int) (a
 // Checks input to see whether implicit flag is missing.
 func (fp *FlagParser) implicitFlagRequired(ufLocations []int, input []string) bool {
 
-	_, exists := fp.GetIndexFromFlagValue(user, fp.implicitFlag) // user passed implicit flag
+	_, exists := fp.GetIndexFromFlagValue(user, fp.implicitFlag) //user passed implicit flag
 	if exists {
 		return false
 	}
@@ -550,14 +550,14 @@ func getDateMap(inputStr string) (mp map[string]int, literalDateStr bool, e erro
 		}
 	}
 
-	// pupulate date map
+	//pupulate date map
 	start := 0
 	for _, v := range letterLocs {
 
 		dateIdfr := string(rune(inputStr[v]))
 
 		if _, exists := mp[dateIdfr]; exists {
-			intPrefix, e := strconv.Atoi(inputStr[start:v]) // number (n) that comes before dateIdfr; e.g. if input = '3m', dateIdfr = 'm' & n = '3'
+			intPrefix, e := strconv.Atoi(inputStr[start:v]) //number (n) that comes before dateIdfr; e.g. if input = '3m', dateIdfr = 'm' & n = '3'
 			if e != nil {
 				return nil, literalDateStr, &UnknownDateInputError{}
 			}
@@ -584,8 +584,8 @@ func getEmptyDateMap() map[string]int {
 func (fp *FlagParser) reassemble(input []string, standalones map[int]string) []string {
 	var locs []int
 
-	// can't guarantee order in maps
-	// no real difference; just for predictability/testing
+	//can't guarantee order in maps
+	//no real difference; just for predictability/testing
 	for i := range standalones {
 		locs = append(locs, i)
 	}
