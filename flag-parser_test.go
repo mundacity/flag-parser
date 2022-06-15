@@ -183,6 +183,42 @@ func _getDateParsingTestCases() []parsing_test_case {
 		systemFlags: _getCanonicalFlagsForGodoGettingTests,
 		err:         &UnknownDateInputError{},
 	}, {
+		args:        []string{"-z", "-2m:-1m"},
+		expected:    []string{},
+		name:        "date range both months no range allowed",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &DateRangeNotAllowedError{},
+	}, {
+		args:        []string{"-z", "-2m:-7d"},
+		expected:    []string{},
+		name:        "date range month operand day operand no range allowed",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &DateRangeNotAllowedError{},
+	}, {
+		args:        []string{"-z", "-2y:-8d"},
+		expected:    []string{},
+		name:        "valid input date range but not allowed",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &DateRangeNotAllowedError{},
+	}, {
+		args:        []string{"-z", "-2y:"},
+		expected:    []string{},
+		name:        "date range bad input missing operand no range allowed",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &DateRangeNotAllowedError{},
+	}, {
+		args:        []string{"-z", "-1y:1"},
+		expected:    []string{},
+		name:        "date range bad input missing time indicator no range allowed",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &DateRangeNotAllowedError{},
+	}, {
+		args:        []string{"-z", "-1y:d"},
+		expected:    []string{},
+		name:        "date range bad input missing time integer no range allowed",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &DateRangeNotAllowedError{},
+	}, {
 		args:        []string{"-b", "this is a spaceful body", "-d", "1y1m2d"},
 		expected:    []string{"-b", "this is a spaceful body", "-d", "2023-04-16"},
 		name:        "add spaceless time",
@@ -530,15 +566,18 @@ func _getCanonicalFlagsForGodoGettingTests() []FlagInfo {
 	f8 := FlagInfo{FlagName: "-b", FlagType: Str, MaxLen: lenMax}
 	f2 := FlagInfo{FlagName: "-i", FlagType: Integer, MaxLen: maxIntDigits}
 	f3 := FlagInfo{FlagName: "-n", FlagType: Boolean}
-	f4 := FlagInfo{FlagName: "-d", FlagType: DateTime, MaxLen: 20}
+	f4 := FlagInfo{FlagName: "-d", FlagType: DateTime, MaxLen: 20, AllowDateRange: true}
 	f5 := FlagInfo{FlagName: "-t", FlagType: Str, MaxLen: maxTagLen}
 	f6 := FlagInfo{FlagName: "-c", FlagType: Integer, MaxLen: maxIntDigits}
 	f7 := FlagInfo{FlagName: "-p", FlagType: Integer, MaxLen: maxIntDigits}
-	f9 := FlagInfo{FlagName: "-e", FlagType: DateTime, MaxLen: 20}
+	f9 := FlagInfo{FlagName: "-e", FlagType: DateTime, MaxLen: 20, AllowDateRange: true}
 	f10 := FlagInfo{FlagName: "-a", FlagType: Boolean, Standalone: true}
 	f11 := FlagInfo{FlagName: "-f", FlagType: Boolean, Standalone: true}
 
-	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10, f11)
+	//dud for testing when AllowDateRange == false
+	f12 := FlagInfo{FlagName: "-z", FlagType: DateTime, MaxLen: 20}
+
+	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10, f11, f12)
 
 	return ret
 }

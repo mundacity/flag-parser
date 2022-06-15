@@ -35,3 +35,9 @@ type MalformedDateRangeError struct{}
 func (m *MalformedDateRangeError) Error() string {
 	return "malformed date range provided"
 }
+
+type DateRangeNotAllowedError struct{}
+
+func (d *DateRangeNotAllowedError) Error() string {
+	return "date range not allowed with flag provided"
+}

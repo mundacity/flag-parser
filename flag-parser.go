@@ -38,10 +38,11 @@ const (
 )
 
 type FlagInfo struct {
-	FlagName   string
-	FlagType   FlagDataType
-	MaxLen     int
-	Standalone bool
+	FlagName       string
+	FlagType       FlagDataType
+	MaxLen         int
+	Standalone     bool
+	AllowDateRange bool
 }
 
 type flag_info_key struct {
@@ -49,6 +50,7 @@ type flag_info_key struct {
 	flgType    FlagDataType
 	maxLen     int
 	standalone bool
+	allowRange bool
 }
 
 type NowMomentFunc func(*FlagParser)
@@ -71,7 +73,7 @@ func NewFlagParser(allFlags []FlagInfo, userFlags []string, nowFunc NowMomentFun
 
 	for i, fi := range allFlags {
 		fp.system_intKey[i] = fi
-		fik := flag_info_key{index: i, flgType: fi.FlagType, maxLen: fi.MaxLen, standalone: fi.Standalone}
+		fik := flag_info_key{index: i, flgType: fi.FlagType, maxLen: fi.MaxLen, standalone: fi.Standalone, allowRange: fi.AllowDateRange}
 		fp.system_strKey[fi.FlagName] = fik
 	}
 
@@ -507,6 +509,9 @@ func (fp *FlagParser) handleDates(input []string, ufLocations []int) ([]string, 
 		var err error
 
 		isRng, rng := checkForDateRange(noSpaces)
+		if isRng && !flgInf.allowRange {
+			return nil, &DateRangeNotAllowedError{}
+		}
 		if !isRng {
 			//keep using input as is
 			retVal, err = convertToDateString(noSpaces, fp.NowMoment.Local())
