@@ -29,3 +29,9 @@ type MissingArgumentError struct{}
 func (m *MissingArgumentError) Error() string {
 	return "flag missing argument"
 }
+
+type MalformedDateRangeError struct{}
+
+func (m *MalformedDateRangeError) Error() string {
+	return "malformed date range provided"
+}

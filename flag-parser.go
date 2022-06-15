@@ -494,7 +494,7 @@ func (fp *FlagParser) implicitFlagRequired(ufLocations []int, input []string) bo
 // Checks args of DateTime flags for literal date strings
 // and date relative shorthand ('3d 9m 4y')
 func (fp *FlagParser) handleDates(input []string, ufLocations []int) ([]string, error) {
-	var yInt, mInt, dInt int
+
 	for _, v := range ufLocations {
 
 		flgInf, _ := fp.GetFlagInfoFromName(input[v])
@@ -503,42 +503,47 @@ func (fp *FlagParser) handleDates(input []string, ufLocations []int) ([]string, 
 		}
 
 		noSpaces := strings.ToLower(strings.ReplaceAll(input[v+1], " ", ""))
-		mp, literalDateStr, err := getDateMap(noSpaces)
-		if err != nil {
-			return nil, err
-		}
-		if literalDateStr {
-			return input, nil
+		var retVal string
+		var err error
+
+		isRng, rng := checkForDateRange(noSpaces)
+		if !isRng {
+			//keep using input as is
+			retVal, err = convertToDateString(noSpaces, fp.NowMoment.Local())
+			if err != nil {
+				return nil, err
+			}
+
+		} else {
+			//use rng[0] & then rng[1]
+			rng[0], err = convertToDateString(rng[0], fp.NowMoment.Local())
+			if err != nil {
+				return nil, err
+			}
+
+			rng[1], err = convertToDateString(rng[1], fp.NowMoment.Local())
+			if err != nil {
+				return nil, err
+			}
+
+			if len(rng[0]) != len(rng[1]) { //e.g. '2022-03-14:2022-03-29' vs. '2022-03-14:'
+				return nil, &MalformedDateRangeError{}
+			}
+			retVal = rng[0] + ":" + rng[1]
 		}
 
-		val, ok := mp["y"]
-		if ok {
-			yInt = val
-		}
-		val, ok = mp["m"]
-		if ok {
-			mInt = val
-		}
-		val, ok = mp["d"]
-		if ok {
-			dInt = val
-		}
-
-		now := fp.NowMoment.Local()
-		newNow := now.AddDate(yInt, mInt, dInt)
-		yy, mm, dd := newNow.Date()
-
-		zPrefM, zPrefD := "", ""
-		if int(mm) < 10 {
-			zPrefM = "0"
-		}
-		if dd < 10 {
-			zPrefD = "0"
-		}
-
-		input[v+1] = fmt.Sprintf("%v-%v%v-%v%v", yy, zPrefM, int(mm), zPrefD, dd)
+		input[v+1] = retVal
 	}
 	return input, nil
+}
+
+func checkForDateRange(input string) (bool, []string) {
+	res := false
+	splt := strings.Split(input, ":")
+	if len(splt) > 1 {
+		res = true
+	}
+	return res, splt
 }
 
 // Checks for existence/location of date identifiers ('y', 'm', 'd')
@@ -583,6 +588,44 @@ func getEmptyDateMap() map[string]int {
 	mp[d] = 0
 
 	return mp
+}
+
+func convertToDateString(input string, nowMo time.Time) (string, error) {
+
+	mp, literal, err := getDateMap(input)
+	if err != nil {
+		return "", err
+	}
+	if literal {
+		return input, nil
+	}
+
+	var yInt, mInt, dInt int
+	val, ok := mp["y"]
+	if ok {
+		yInt = val
+	}
+	val, ok = mp["m"]
+	if ok {
+		mInt = val
+	}
+	val, ok = mp["d"]
+	if ok {
+		dInt = val
+	}
+
+	newNow := nowMo.AddDate(yInt, mInt, dInt)
+	yy, mm, dd := newNow.Date()
+
+	zPrefM, zPrefD := "", ""
+	if int(mm) < 10 {
+		zPrefM = "0"
+	}
+	if dd < 10 {
+		zPrefD = "0"
+	}
+
+	return fmt.Sprintf("%v-%v%v-%v%v", yy, zPrefM, int(mm), zPrefD, dd), nil
 }
 
 // Appends standalone flags to end of input. Since they're

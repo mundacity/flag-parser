@@ -147,6 +147,42 @@ func _getVariableMaxTagLengthTestCases() []parsing_test_case {
 
 func _getDateParsingTestCases() []parsing_test_case {
 	return []parsing_test_case{{
+		args:        []string{"-d", "-2m:-1m"},
+		expected:    []string{"-d", "2022-01-14:2022-02-14"},
+		name:        "date range both months",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         nil,
+	}, {
+		args:        []string{"-d", "-2m:-7d"},
+		expected:    []string{"-d", "2022-01-14:2022-03-07"},
+		name:        "date range month operand day operand",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         nil,
+	}, {
+		args:        []string{"-d", "-2y:-8d"},
+		expected:    []string{"-d", "2020-03-14:2022-03-06"},
+		name:        "date range year operand day operand",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         nil,
+	}, {
+		args:        []string{"-d", "-2y:"},
+		expected:    []string{},
+		name:        "date range bad input missing operand",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &MalformedDateRangeError{},
+	}, {
+		args:        []string{"-d", "-1y:1"},
+		expected:    []string{},
+		name:        "date range bad input missing time indicator",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &MalformedDateRangeError{},
+	}, {
+		args:        []string{"-d", "-1y:d"},
+		expected:    []string{},
+		name:        "date range bad input missing time integer",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         &UnknownDateInputError{},
+	}, {
 		args:        []string{"-b", "this is a spaceful body", "-d", "1y1m2d"},
 		expected:    []string{"-b", "this is a spaceful body", "-d", "2023-04-16"},
 		name:        "add spaceless time",
@@ -554,9 +590,13 @@ func _runDateParseTest(t *testing.T, tc parsing_test_case) {
 	fp := NewFlagParser(tc.systemFlags(), tc.args, WithNowAs(returnNowString(), "2006-01-02"))
 	got, err := fp.ParseUserInput()
 
-	if err != nil && err == tc.err {
-		t.Logf(">>>>PASSED: operation threw error. \nExp\t'%v', \nGot\t'%v'", tc.err, err)
-		return
+	if err != nil {
+		if err == tc.err {
+			t.Logf(">>>>PASSED: operation threw error. \nExp\t'%v', \nGot\t'%v'", tc.err, err)
+			return
+		} else {
+			t.Errorf(">>>>FAILED: operation threw wrong error. \nExp\t'%v', \nGot\t'%v'", tc.err, err)
+		}
 	}
 
 	if len(tc.expected) != len(got) {
