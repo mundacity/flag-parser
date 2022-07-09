@@ -147,6 +147,12 @@ func _getVariableMaxTagLengthTestCases() []parsing_test_case {
 
 func _getDateParsingTestCases() []parsing_test_case {
 	return []parsing_test_case{{
+		args:        []string{"-F", "-d", "-7d:10d", "-e", "8d"},
+		expected:    []string{"-d", "2022-03-07:2022-03-24", "-e", "2022-03-22", "-F"},
+		name:        "date range both days plus standalone",
+		systemFlags: _getCanonicalFlagsForGodoGettingTests,
+		err:         nil,
+	}, {
 		args:        []string{"-d", "-2m:-1m"},
 		expected:    []string{"-d", "2022-01-14:2022-02-14"},
 		name:        "date range both months",
@@ -573,11 +579,12 @@ func _getCanonicalFlagsForGodoGettingTests() []FlagInfo {
 	f9 := FlagInfo{FlagName: "-e", FlagType: DateTime, MaxLen: 20, AllowDateRange: true}
 	f10 := FlagInfo{FlagName: "-a", FlagType: Boolean, Standalone: true}
 	f11 := FlagInfo{FlagName: "-f", FlagType: Boolean, Standalone: true}
+	f13 := FlagInfo{FlagName: "-F", FlagType: Boolean, Standalone: true}
 
 	//dud for testing when AllowDateRange == false
 	f12 := FlagInfo{FlagName: "-z", FlagType: DateTime, MaxLen: 20}
 
-	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10, f11, f12)
+	ret = append(ret, f8, f2, f3, f4, f5, f6, f7, f9, f10, f11, f13, f12)
 
 	return ret
 }
