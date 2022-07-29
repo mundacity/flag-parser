@@ -62,8 +62,22 @@ func WithNowAs(nowStr, dateTimeFormat string) NowMomentFunc {
 	}
 }
 
+func NewParser(allFlags []FlagInfo, userFlags []string, nowStr, dateFormat string) *FlagParser {
+	fp := setup(allFlags, userFlags)
+	fp.DateTimeLayout = dateFormat
+	fp.NowMoment, _ = time.Parse(dateFormat, nowStr)
+	return fp
+}
+
 // Sets up a new FlagParser. allFlags[0] assumed to be implicit flag
 func NewFlagParser(allFlags []FlagInfo, userFlags []string, nowFunc NowMomentFunc) *FlagParser {
+
+	fp := setup(allFlags, userFlags)
+	nowFunc(fp)
+	return fp
+}
+
+func setup(allFlags []FlagInfo, userFlags []string) *FlagParser {
 	fp := FlagParser{canonicalFlags: allFlags}
 	fp.userPassedFlags = append(fp.userPassedFlags, userFlags)
 	fp.implicitFlag = allFlags[0].FlagName
@@ -82,7 +96,6 @@ func NewFlagParser(allFlags []FlagInfo, userFlags []string, nowFunc NowMomentFun
 		fp.HasUnknownFlags = true //don't return error from constructor
 	}
 
-	nowFunc(&fp)
 	return &fp
 }
 
